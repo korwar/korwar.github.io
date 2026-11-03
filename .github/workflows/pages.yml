@@ -1,1 +1,40 @@
-
+# main 브랜치에 push 하면 게임을 빌드해 GitHub Pages(https://<사용자명>.github.io)에 배포합니다.
+# 저장소 Settings → Secrets and variables → Actions → Variables 에 API_BASE 를 등록하십시오.
+#   예) API_BASE = https://jcs-game.duckdns.org
+name: Deploy game to GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build
+        env:
+          API_BASE: ${{ vars.API_BASE }}
+        run: python3 build.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
