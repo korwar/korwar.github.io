@@ -161,7 +161,7 @@ function newGame(difficulty = 'normal', brain = null, params = null) {
   }
   recomputeFront(S); computeSupply(S);
   S.willP = willTarget(S, 0, 0);
-  log(S, '개전 명령 하달. 전시 지휘체제로 전환.', 'sys');
+  log(S, '개전 명령 하달. 합동참모본부 전시 지휘체제로 전환.', 'sys');
   log(S, `[정보] 북한군 지상 전력 약 ${Math.round(S.kpaInit / 10000)}만 명 전개 확인. 특수작전군·교도대 추가 투입 예상.`, 'warn');
   log(S, '현재 모든 부대는 방어·예비 태세입니다. 공격 명령을 내려 작전을 개시하십시오.', 'sys');
   applyKnowledge(S);

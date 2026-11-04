@@ -159,7 +159,7 @@ const END_SUBTEXT = {
   win_pyrrhic: '통일은 이루었지만, 막대한 희생과 무너진 민심이 남았습니다.',
   lose_will: '누적된 피해로 국민적 지지가 붕괴해 정부가 휴전을 결정했습니다.',
   lose_front: '국군의 최후 방어선이 무너졌습니다.',
-  lose_surrender: '정부는 전 전선에 사격 중지를 명령하고 전쟁 중단을 선언했습니다.',
+  lose_surrender: '정부는 합참의장의 건의에 따라 전쟁 중단을 선언했습니다.',
 };
 function showBriefing() {
   const m = $('#brief'); m.style.display = 'flex';
