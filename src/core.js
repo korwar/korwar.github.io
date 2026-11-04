@@ -1,5 +1,5 @@
 /* =====================================================================
- *  CORE : 시뮬레이션 엔진 + 국민 지지도 모델 (DOM 비의존)
+ *  CORE : 시뮬레이션 엔진 + 국민 지지도 모델 + 종전 판정 (DOM 비의존)
  *  북한군 학습 로직은 shared/brain.js (서버와 공용)
  * ===================================================================== */
 const GRID = { lat0: 33.0, lat1: 43.1, lon0: 124.2, lon1: 130.8, res: 0.05 };
@@ -32,6 +32,10 @@ const DIFF = {
   normal: { mul: 0.98, sofPool: 70000, kres: 14, offDay: 3, startOff: 0,  chinaMul: 1.25 },
   hard:   { mul: 1.06, sofPool: 90000, kres: 18, offDay: 0, startOff: 14, chinaMul: 1.5 },
 };
+/* 위험·패배 판정 기준 */
+const DANGER = { will: 5, willWarn: 15, land: 0.10, southLost: 0.30, wmd: 90 };
+const LOSE_LAND = 0.05;   // 한반도 전체 육지 중 국군 통제 비율이 이 값 미만이면 전선 붕괴(패전)
+
 function cellOf(lat, lon) {
   const i = Math.floor((lon - GRID.lon0) / GRID.res), j = Math.floor((lat - GRID.lat0) / GRID.res);
   if (i < 0 || j < 0 || i >= NX || j >= NY) return -1;
@@ -170,6 +174,20 @@ function makeReport(S, result) {
     cas: Math.round(st.rok.kia + st.rok.wia + st.rok.mia), kia: Math.round(st.rok.kia), civ: Math.round(st.civ),
     cost: Math.round(st.cost * 10) / 10, will: Math.max(0, Math.round(S.will * 10) / 10), pow: Math.round(st.kpaPOW),
     china: S.chinaIn, capFrac: cap / S.northCells0, params: S.P, obs: S.obs };
+}
+/* 현재 위험 상황 목록 (UI 경보용) */
+function dangerState(S) {
+  let own = 0, lostS = 0;
+  for (let c = 0; c < NCELL; c++) if (S.land[c]) { if (S.owner[c] === 1) own++; if (S.origOwner[c] === 1 && S.owner[c] === 2) lostS++; }
+  const ownFrac = own / S.landCells, lostFrac = lostS / S.southCells0, T = S.willP ? S.willP.T : S.will;
+  const msgs = []; let critical = false;
+  if (S.will < DANGER.will) { msgs.push(`국민 지지도 붕괴 직전 (${S.will.toFixed(1)}%) — 정부가 휴전 협상을 검토 중입니다`); critical = true; }
+  else if (S.will < DANGER.willWarn && T < S.will) msgs.push(`국민 지지도 급락 중 (${S.will.toFixed(1)}%, 목표 ${T.toFixed(0)})`);
+  if (ownFrac < DANGER.land) { msgs.push(`국군 통제 영토 ${(ownFrac * 100).toFixed(1)}% — 최후 방어선 붕괴 임박`); critical = true; }
+  else if (lostFrac >= DANGER.southLost) msgs.push(`남측 영토 ${(lostFrac * 100).toFixed(0)}% 피탈`);
+  if (S.flags.seoulLost) msgs.push('수도 서울 함락');
+  if (S.wmd >= DANGER.wmd) msgs.push(`북한 대량살상무기 사용 임박 (위협도 ${S.wmd.toFixed(0)})`);
+  return { active: msgs.length > 0, critical, msgs, ownFrac };
 }
 function addUnit(S, u) {
   u.alive = true; u.morale = u.side === 'KPA' ? 74 : 82; u.supply = 100; u.target = null; u.pending = null;
@@ -481,7 +499,6 @@ function allocateReserves(S) {
     log(S, `[정보] 북한군 예비전력(${best.name}) 이동 포착 — ${t.u.name} 정면으로 증원 중인 것으로 판단.`, 'warn');
   }
 }
-/* 특수작전군 침투 : 1회 1개 조, 전쟁 내내 반복 */
 const INFIL_KIND = ['AN-2 공중침투', '잠수함·공기부양정 해상침투', '땅굴·전선 침투', '점령지 후방 유격전'];
 function randomCell(S, pred, tries = 500) { for (let t = 0; t < tries; t++) { const c = (Math.random() * NCELL) | 0; if (S.land[c] && pred(c)) return c; } return -1; }
 function frontDist(S, c) { const [a, o] = cellLL(c); return nearestCell({ lat: a, lon: o }, S.frontCells[2], S, 2)[1]; }
@@ -598,7 +615,7 @@ function daily(S) {
     log(S, '★ 평양 점령! 북한 지도부는 자강도 방면으로 이탈한 것으로 추정됩니다.', 'good');
   }
   const sc = cellOf(SEOUL[0], SEOUL[1]);
-  if (!S.flags.seoulLost && S.owner[sc] === 2) { S.flags.seoulLost = true; shock(S, -10, '서울 함락'); log(S, '서울이 적에게 함락되었습니다!', 'bad'); }
+  if (!S.flags.seoulLost && S.owner[sc] === 2) { S.flags.seoulLost = true; S.flags.seoulEverLost = true; shock(S, -10, '서울 함락'); log(S, '서울이 적에게 함락되었습니다!', 'bad'); }
   if (S.flags.seoulLost && S.owner[sc] === 1) { S.flags.seoulLost = false; shock(S, 5, '서울 탈환'); log(S, '서울 탈환.', 'good'); }
   S.willP = willTarget(S, capFrac, lostS / S.southCells0);
   S.will = Math.min(100, S.will + (S.willP.T - S.will) * WILL_RATE);
@@ -720,19 +737,24 @@ function wmd(S, units) {
     S.usBoost += 5;
   }
 }
+/* 종전 판정: 결과(result)와 엔딩 시나리오(ending)를 함께 결정 */
+const END_TITLES = {
+  win_clean: '한반도 통일', win_china: '두 개의 군대를 넘어', win_pyrrhic: '상처뿐인 통일',
+  lose_will: '휴전', lose_front: '패전', lose_surrender: '정전',
+};
+function finishGame(S, result, ending) {
+  const st = S.stats;
+  S.over = { result, ending, title: END_TITLES[ending], stats: { day: dayOf(S), cas: Math.round(st.rok.kia + st.rok.wia + st.rok.mia), cost: st.cost } };
+}
 function checkEnd(S, n2, s1) {
   if (S.over) return;
-  const day = dayOf(S), st = S.stats, cas = Math.round(st.rok.kia + st.rok.wia + st.rok.mia);
   const enemyAlive = S.units.some(u => u.alive && u.active && SIDE_OF[u.side] === 2);
   if (n2 === 0 || (!enemyAlive && S.lastCaptured > 0.5)) {
     if (n2) { for (let c = 0; c < NCELL; c++) if (S.land[c]) S.owner[c] = 1; S.terrVer++; }
-    S.over = { result: 'win', title: '한반도 통일', msg: `개전 ${day}일 만에 전선이 압록강과 두만강에 도달했습니다.\n분단 이후 처음으로 한반도 전역이 하나의 정부 아래 놓였습니다.` };
-  } else if (S.will <= 0) {
-    S.over = { result: 'lose', title: '전쟁 지속 불가', msg: '누적된 피해로 국민적 지지가 붕괴했습니다.\n정부는 휴전 협상을 결정했고, 합참의장은 직에서 물러났습니다.' };
-  } else if (s1 / S.landCells < 0.25) {
-    S.over = { result: 'lose', title: '전선 붕괴', msg: '국군의 방어선이 무너졌습니다.\n남은 전력으로는 더 이상 전쟁을 수행할 수 없습니다.' };
-  }
-  if (S.over) S.over.stats = { day, cas, cost: st.cost };
+    const cas = S.stats.rok.kia + S.stats.rok.wia + S.stats.rok.mia;
+    finishGame(S, 'win', (S.will < 20 || cas > 350000) ? 'win_pyrrhic' : S.chinaIn ? 'win_china' : 'win_clean');
+  } else if (S.will <= 0) finishGame(S, 'lose', 'lose_will');
+  else if (s1 / S.landCells < LOSE_LAND) finishGame(S, 'lose', 'lose_front');
 }
 const CMD = {
   setBrigOrder(S, u, i, ord) { u.brigades[i].order = ord; if (ord === 'attack' && u.side === 'ROK') S.rokAttacked = true; },
@@ -789,5 +811,5 @@ const CMD = {
     for (const u of S.units) if (u.alive && SIDE_OF[u.side] === 1) for (const b of u.brigades) if (b.guns || b.mlrs) { const add = b.initShells * 0.5; b.shells = Math.min(b.initShells * 1.5, b.shells + add); n += add; }
     S.stats.cost += n * 0.000006 + 0.5; log(S, `탄약 긴급 추진 보급 — 약 ${Math.round(n).toLocaleString()}발 보급.`, 'good'); return null; },
   toggleCB(S) { S.counterBattery = !S.counterBattery; log(S, S.counterBattery ? '대화력전 우선 지시 — 북한 장사정포 집중 타격.' : '대화력전 우선 지시 해제.', 'sys'); },
-  surrender(S) { S.over = { result: 'lose', title: '항복', msg: '대한민국 정부는 합참의장의 건의에 따라 전쟁 중단을 선언했습니다.', stats: { day: dayOf(S), cas: Math.round(S.stats.rok.kia + S.stats.rok.wia + S.stats.rok.mia), cost: S.stats.cost } }; },
+  surrender(S) { finishGame(S, 'lose', 'lose_surrender'); },
 };
