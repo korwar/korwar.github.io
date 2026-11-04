@@ -39,32 +39,7 @@ async function loadRankings() {
   renderRankTabs(); renderRankTable();
 }
 function openMenu() { clearGame(); show('menu'); loadRankings(); }
-/* ---------- 기기 판정 (v1.1.2): 스마트폰 등 플레이가 어려운 기기 차단 ---------- */
-const MIN_PLAY_W = 1024, MIN_PLAY_H = 600;
-function deviceCheck() {
-  const sw = Math.max(screen.width, screen.height), sh = Math.min(screen.width, screen.height);
-  const vw = Math.max(window.innerWidth, window.innerHeight), vh = Math.min(window.innerWidth, window.innerHeight);
-  const coarse = window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches;
-  const ua = navigator.userAgent || '';
-  const phoneUA = /Android.+Mobile|iPhone|iPod|Windows Phone|BlackBerry|Opera Mini|IEMobile|Mobile Safari/i.test(ua) && !/iPad|Tablet/i.test(ua);
-  const smallScreen = sw < MIN_PLAY_W || sh < MIN_PLAY_H;          // 기기 화면 자체가 작음 (회전해도 동일)
-  if (phoneUA || (coarse && smallScreen)) return { ok: false, reason: 'phone' };
-  if (vw < MIN_PLAY_W || vh < MIN_PLAY_H) return { ok: false, reason: 'window' };   // PC지만 창이 너무 작음
-  return { ok: true };
-}
-function showDeviceBlock(reason) {
-  const b = $('#deviceBlock');
-  b.querySelector('.dbReason').textContent = reason === 'window'
-    ? `현재 브라우저 창이 너무 작습니다 (최소 ${MIN_PLAY_W}×${MIN_PLAY_H}). 창을 최대화하거나 화면 배율을 낮춘 뒤 다시 시도해 주십시오.`
-    : '제2차 한국전쟁은 넓은 지도와 다수의 부대를 동시에 지휘하는 화면을 사용하므로 스마트폰을 지원하지 않습니다.';
-  b.querySelector('.dbRetry').style.display = reason === 'window' ? '' : 'none';
-  b.style.display = 'flex';
-}
-function canStart() { const d = deviceCheck(); if (!d.ok) { showDeviceBlock(d.reason); return false; } return true; }
-$('#deviceBlock .dbClose').onclick = () => { $('#deviceBlock').style.display = 'none'; };
-$('#deviceBlock .dbRetry').onclick = () => { $('#deviceBlock').style.display = 'none'; $('#mStart').click(); };
-(function markDevice() { const d = deviceCheck(); document.body.classList.toggle('noPlay', !d.ok && d.reason === 'phone'); })();
-$('#mStart').onclick = () => { if (!canStart()) return; show('app'); clearGame(); if (SETTINGS.prologue === 'skip') showBriefing(); else runSequence(prologueLines(), showBriefing); };
+$('#mStart').onclick = () => { show('app'); clearGame(); if (SETTINGS.prologue === 'skip') showBriefing(); else runSequence(prologueLines(), showBriefing); };
 $('#mGuide').onclick = () => openModal('guide');
 $('#mSettings').onclick = () => { fillSettings(); openModal('settings'); };
 $('#mCredits').onclick = () => openModal('credits');
@@ -247,7 +222,7 @@ function bindRankForm() {
 }
 function resetEnd() { $('#end').style.display = 'none'; $('#rankForm').innerHTML = rankFormHTML; bindRankForm(); }
 bindRankForm();
-$('#againBtn').onclick = () => { if (!canStart()) { resetEnd(); openMenu(); return; } resetEnd(); clearGame(); if (SETTINGS.prologue === 'skip') showBriefing(); else runSequence(prologueLines(), showBriefing); };
+$('#againBtn').onclick = () => { resetEnd(); clearGame(); if (SETTINGS.prologue === 'skip') showBriefing(); else runSequence(prologueLines(), showBriefing); };
 $('#endMenuBtn').onclick = () => { resetEnd(); openMenu(); };
 requestAnimationFrame(loop);
 openMenu();
