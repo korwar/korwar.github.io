@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>제2차 한국전쟁</title>
+<title>합참의장 — 한반도 통일 작전</title>
 <style>/*CSS*/</style>
 <script>window.JCS_API_BASE = "/*API_BASE*/";</script>
 </head>
@@ -19,13 +19,13 @@ admin
 <div id="menu">
   <div id="menuArt"></div>
   <div id="menuLeft">
-    <div class="emblem">THE SECOND KOREAN WAR</div>
-    <h1>제2차 한국전쟁</h1>
-    <h2>합동참모의장의 전쟁</h2>
+    <div class="emblem">JOINT CHIEFS OF STAFF · 합동참모본부</div>
+    <h1>합참의장</h1>
+    <h2>한반도 통일 작전</h2>
     <div class="tagline">전투는 부대가 합니다. 당신은 지시합니다.<br>60만 북한군, 끝없는 침투, 그리고 압록강 너머의 그림자 — 통일의 길을 지휘하십시오.</div>
     <div id="menuBtns">
       <button class="mbtn pri" id="mStart">시작하기<small>프롤로그부터 새 전쟁을 시작합니다</small></button>
-      <button class="mbtn" id="mGuide">게임 안내<small>세계관 · 시스템 · 북한군 AI · 엔딩 · 랭킹 규칙</small></button>
+      <button class="mbtn" id="mGuide">게임 안내<small>세계관 · 시스템 · 북한군 AI · 랭킹 규칙</small></button>
       <button class="mbtn" id="mSettings">설정<small>프롤로그 · 기본 배속 · 표시 옵션</small></button>
       <button class="mbtn" id="mCredits">제작 정보<small>데이터 출처 · 개인정보 안내</small></button>
     </div>
@@ -42,7 +42,7 @@ admin
 
 <div id="app">
   <div id="topbar">
-    <div class="title">제2차 한국전쟁<small>합동참모본부 전쟁지휘체계</small></div>
+    <div class="title">합동참모본부 전쟁지휘체계<small>한반도 통일 작전</small></div>
     <div id="clock">D+0  00:00</div>
     <div id="speed">
       <button class="btn" data-sp="pause" id="pauseBtn" title="일시정지 (Space)">❚❚</button>
@@ -59,9 +59,7 @@ admin
   <div id="main">
     <div id="mapWrap">
       <canvas id="map"></canvas>
-      <div id="dangerOverlay"></div>
       <div id="unitLayer"></div>
-      <div id="dangerMsg"></div>
       <div id="hint"></div>
       <div id="toast"></div>
       <div id="zoomBtns"><button class="btn" id="zin">+</button><button class="btn" id="zout">−</button><button class="btn" id="zfit" title="전체 보기">⤢</button></div>
@@ -118,11 +116,6 @@ admin
     <li>해병사단·여단: 600km 이내 해안 상륙(48시간 준비)</li>
     <li>보급로가 끊긴 적은 사기가 무너져 투항합니다. 상륙·공수로 포위하면 효과적입니다.</li>
   </ul>
-  <h3>위험 경보</h3>
-  <ul>
-    <li>지도가 붉게 깜빡이고 상단에 노란 경보가 뜨면 패전 직전입니다. 국민 지지도 5% 미만, 국군 통제 영토 10% 미만이면 빠르게, 지지도 급락·남측 영토 30% 이상 피탈·서울 함락·WMD 사용 임박이면 천천히 깜빡입니다.</li>
-    <li>지지도 위기: 공세를 멈추고 방어·정비로 사상자를 줄이며, 대화력전·외교로 악재를 줄이십시오. 영토 위기: 지연전으로 시간을 벌고 미 증원·동원사단을 집결시키십시오.</li>
-  </ul>
   <h3>운영 요령</h3>
   <ul>
     <li><b>국민 지지도</b>: 상태 패널의 흰 눈금이 목표치입니다. 전선이 10일 넘게 진전하지 않으면 교착 감점이 쌓이니, 한 축선이라도 계속 밀어 주십시오.</li>
@@ -139,15 +132,15 @@ admin
   <div id="guideTabs">
     <button class="chip sel" data-page="world">세계관·목표</button><button class="chip" data-page="will">국민 지지도</button>
     <button class="chip" data-page="kpa">북한군·학습 AI</button><button class="chip" data-page="allies">미군·중국군</button>
-    <button class="chip" data-page="ending">엔딩</button><button class="chip" data-page="rank">랭킹 규칙</button>
+    <button class="chip" data-page="rank">랭킹 규칙</button>
   </div>
   <div class="gpage" data-page="world">
     <h3>배경</h3>
-    <p>합참 작전본부장이던 당신은 대장 진급과 함께 합동참모의장에 취임합니다. 북한의 전면전 준비가 확인되고 휴전선 일대 국지 교전이 잦아지자, 정부는 미국과 협의해 개전을 결정합니다. 제2차 한국전쟁의 시작입니다.</p>
+    <p>합참 작전본부장이던 당신은 대장 진급과 함께 합동참모의장에 취임합니다. 북한의 전면전 준비가 확인되고 휴전선 일대 국지 교전이 잦아지자, 정부는 미국과 협의해 개전을 결정합니다.</p>
     <h3>목표와 종료</h3>
     <ul>
       <li><b>승리</b>: 전선을 압록강·두만강까지 올려 북측 지역을 모두 확보.</li>
-      <li><b>패배</b>: 국민 지지도 0(휴전), 국군 통제 영토가 한반도 육지의 5% 미만(전선 붕괴), 또는 항복.</li>
+      <li><b>패배</b>: 국민 지지도 0(전쟁 지속 불가), 남측 영토 대부분 상실(전선 붕괴), 또는 항복.</li>
     </ul>
     <h3>당신의 역할</h3>
     <p>직접 전투하지 않습니다. 전군·사단·여단 단위로 자세와 포병 사격을 지시하고, 공군 배분과 전략 조치를 결정합니다. 전투 결과와 전선 이동은 시뮬레이션이 실시간으로 계산합니다.</p>
@@ -183,6 +176,7 @@ admin
       <li>공세·역습·지연전 판단 기준, 예비대 운용, 침투·동원 주기 등 교리 13개 항목을 판마다 조금씩 바꿔 보고, 더 효과적이었던 교리를 채택합니다.</li>
       <li>누적된 전쟁 수에 비례해 지휘 숙련도가 오릅니다(최대 +8%).</li>
     </ul>
+    <p>많은 지휘관이 같은 전술을 쓸수록 그 전술은 점점 통하지 않게 됩니다.</p>
   </div>
   <div class="gpage" data-page="allies" style="display:none">
     <h3>미군</h3>
@@ -192,17 +186,6 @@ admin
       <li>북측 확보율, 북위 39.6° 이북 아군 부대 수, 북상한 미군 부대에 따라 개입 위험이 오르며 100에 이르면 참전합니다.</li>
       <li>북부전구 제78·79·80집단군과 중부전구 제81·82·83집단군 등 최대 12개 제대(약 26만 명)가 4파(당일, +6, +13, +21일)로 진입합니다.</li>
       <li>4파 진입 후 병력이 65% 이상 줄면 철수하며, 외교 협상은 중국군 손실 40%·북측 확보 70%·개입 후 20일 경과 시 타결됩니다.</li>
-    </ul>
-  </div>
-  <div class="gpage" data-page="ending" style="display:none">
-    <p>전쟁이 끝나면 결과에 따라 6가지 엔딩 중 하나가 흐릅니다.</p>
-    <ul>
-      <li><b>한반도 통일</b> — 중국 개입 없이 통일 (국민 지지도 20 이상, 국군 사상자 35만 명 이하)</li>
-      <li><b>두 개의 군대를 넘어</b> — 중국 참전을 이겨내고 통일</li>
-      <li><b>상처뿐인 통일</b> — 통일했지만 지지도 20 미만 또는 국군 사상자 35만 명 초과</li>
-      <li><b>휴전</b> — 국민 지지도 붕괴로 전쟁 중단</li>
-      <li><b>패전</b> — 국군 통제 영토가 한반도 육지의 5% 미만</li>
-      <li><b>정전</b> — 합참의장의 항복 건의</li>
     </ul>
   </div>
   <div class="gpage" data-page="rank" style="display:none">

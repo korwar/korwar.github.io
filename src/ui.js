@@ -1,5 +1,5 @@
 /* =====================================================================
- *  UI : 지도 렌더링 · 부대 버튼 · 지휘 패널 · 위험 경보 (게임 화면)
+ *  UI : 지도 렌더링 · 부대 버튼 · 지휘 패널 (게임 화면)
  * ===================================================================== */
 const $ = s => document.querySelector(s);
 const KX = 0.79, WLON0 = 124.0, WLAT1 = 43.3;
@@ -43,7 +43,6 @@ function setLogo(img, u) { img.src = u.logo || logoURL(u); img.onerror = () => {
 function clearGame() {
   unitEls.forEach(el => el.remove()); unitEls.clear(); S = null; selected = null; mode = null;
   $('#status').innerHTML = ''; $('#ctx').innerHTML = ''; $('#logBox').innerHTML = ''; $('#clock').textContent = 'D+0  00:00';
-  setDanger(null);
 }
 async function startNew(diff) {
   $('#loading').style.display = 'flex';
@@ -239,25 +238,9 @@ function loop(t) {
   }
   if ($('#app').style.display !== 'none') { draw(); if (S) syncUnits(); }
   uiT += dt;
-  if (S && uiT > 0.25) { uiT = 0; updateStatus(); updateDanger(); updateCtxValues(); pollLog(); if (S.over) showEnd(); }
+  if (S && uiT > 0.25) { uiT = 0; updateStatus(); updateCtxValues(); pollLog(); if (S.over) showEnd(); }
   requestAnimationFrame(loop);
 }
-
-/* ---------- 위험 경보: 지도 붉은 점멸 + 상단 중앙 노란 메시지 ---------- */
-let dangerSig = '';
-function setDanger(d) {
-  const ov = $('#dangerOverlay'), msg = $('#dangerMsg');
-  const on = !!(d && d.active);
-  ov.classList.toggle('on', on); ov.classList.toggle('critical', on && d.critical);
-  msg.style.display = on ? 'block' : 'none';
-  if (!on) { dangerSig = ''; return; }
-  const sig = d.msgs.join('|') + d.critical;
-  if (sig === dangerSig) return;
-  dangerSig = sig;
-  msg.innerHTML = `<div class="dh">${d.critical ? '⚠ 전쟁 수행 위기' : '⚠ 위험 경보'}</div>` + d.msgs.map(m => `<div>${esc(m)}</div>`).join('');
-}
-function updateDanger() { setDanger(S && !S.over ? dangerState(S) : null); }
-
 let statusCache = { v: -1 };
 function updateStatus() {
   const d = Math.floor(S.hour / 24), h = S.hour % 24;

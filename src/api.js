@@ -2,6 +2,7 @@
  *  API : Oracle 서버(API) 연동
  *  - API 주소는 빌드 시 window.JCS_API_BASE 로 주입됩니다 (GitHub 저장소 변수 API_BASE).
  *  - 서버에 연결할 수 없으면 이 브라우저에만 저장하는 오프라인 모드로 자동 전환합니다.
+ *  - 요청 본문은 text/plain 으로 보내 CORS 사전 요청(preflight)을 줄입니다.
  * ===================================================================== */
 const LOCAL_BANNED = parseBanned((document.getElementById('bannedWords') || {}).textContent || '');
 const LS = { brain: 'jcs_brain_offline_v3', rank: 'jcs_rank_offline_v1', settings: 'jcs_settings_v1' };
@@ -36,7 +37,7 @@ const Api = {
   async end(report) {
     if (this.token) {
       try { return await httpJson('POST', '/api/game/end', { token: this.token, report }); }
-      catch (e) { return { learn: null, qualifies: [], error: e.server ? e.message : '서버에 연결할 수 없습니다.' }; }
+      catch (e) { if (e.server) return { learn: null, qualifies: [], error: e.message }; return { learn: null, qualifies: [], error: '서버에 연결할 수 없습니다.' }; }
     }
     const r = sanitizeReport(JSON.parse(JSON.stringify(report)));
     let learn = null, qualifies = [];
@@ -56,6 +57,7 @@ const Api = {
     if (this.mode === 'server') { try { return (await httpJson('GET', '/api/rankings')).entries; } catch (e) { } }
     return lsGet(LS.rank, []);
   },
+  /* 중도 이탈 시 학습만 반영 */
   abort(report) {
     if (this.token) {
       const body = JSON.stringify({ token: this.token, report }), url = API_BASE + '/api/game/end';

@@ -52,6 +52,7 @@ const SUPPLY_SRC = {
   2: [[39.03,125.75],[40.10,124.41],[40.97,126.59],[39.92,127.54],[41.79,129.78],[41.40,128.18],[39.15,127.44]]
 };
 const SEOUL = [37.56,126.98], PYONGYANG = [39.03,125.75];
+
 const RANK_RATIO = { ROK:[0.08,0.22], US:[0.10,0.40], KPA:[0.07,0.15], PLA:[0.09,0.30] };
 function mkB(name, kind, pers, o = {}, side = 'ROK') {
   pers = Math.round(pers);
