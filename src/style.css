@@ -168,3 +168,32 @@ table.tb th{color:#7d93a8;font-weight:400}table.tb td.n{text-align:right;font-fa
 #nickPreview{color:#8fe3a1;font-size:12px}
 #rankForm .priv{font-size:11px;color:#8a8f7a;margin-top:6px}
 #rankForm .ok{color:#8fe3a1;font-size:14px;text-align:center}
+
+/* ===== v1.1.2 : 플레이 불가 기기 안내 ===== */
+#deviceBlock{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:20px}
+#deviceBlock .dbBox{max-width:480px;width:100%;background:#0f1720;border:1px solid #8a7420;border-radius:10px;padding:26px 22px;text-align:center;box-shadow:0 10px 40px #000a}
+#deviceBlock .dbIcon{font-size:44px;margin-bottom:8px}
+#deviceBlock h2{color:#ffd400;font-size:20px;margin-bottom:12px;line-height:1.4}
+#deviceBlock p{color:#cfd8e3;font-size:14px;line-height:1.7;margin-top:8px}
+#deviceBlock .dbHint{color:#9fb3c8;font-size:13px}
+#deviceBlock .dbBtns{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+.mobileNote{display:none;margin-top:14px;background:#1a1200;border:1px solid #ffd400;color:#ffd400;border-radius:6px;padding:8px 12px;font-size:13px;line-height:1.5}
+body.noPlay .mobileNote{display:block}
+body.noPlay #mStart{opacity:.55}
+/* 작은 화면에서는 메인 메뉴를 세로로 쌓아 열람만 가능하게 */
+@media (max-width:900px){
+  html,body{overflow:auto}
+  #menu{position:relative;min-height:100%;flex-direction:column;overflow:visible}
+  #menuArt{left:0;width:100%;opacity:.18}
+  #menuLeft{width:100%;min-width:0;padding:28px 20px 10px}
+  #menuLeft h1{font-size:36px;letter-spacing:3px;white-space:normal}
+  .emblem{font-size:11px;letter-spacing:4px}
+  #menuBtns{width:100%;margin-top:22px}
+  .mbtn{font-size:15px;padding:12px 16px}
+  .mbtn.pri{font-size:17px}
+  .menuFoot{margin-top:16px}
+  #rankPanel{width:auto;margin:10px 12px 24px;padding:14px 12px;max-height:none}
+  #rankTbl{font-size:12px}
+  #rankTbl .dt{display:none}
+  .modal .box{padding:18px 16px;width:96%}
+}
