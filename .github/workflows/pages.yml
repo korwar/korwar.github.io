@@ -1,6 +1,5 @@
 # main 브랜치에 push 하면 게임을 빌드해 GitHub Pages(https://<사용자명>.github.io)에 배포합니다.
 # 저장소 Settings → Secrets and variables → Actions → Variables 에 API_BASE 를 등록하십시오.
-#   예) API_BASE = https://jcs-game.duckdns.org
 name: Deploy game to GitHub Pages
 on:
   push:
