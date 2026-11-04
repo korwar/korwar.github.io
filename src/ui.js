@@ -90,7 +90,26 @@ function rebuildTerritory() {
   }
   terrVerDrawn = S.terrVer;
 }
+
+/* 캔버스 픽셀 크기가 실제 표시 크기와 다르면 즉시 재설정 (확대 배율·중심점 유지) */
+function syncCanvasSize() {
+  const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+  if (!w || !h || (canvas.width === w && canvas.height === h)) return;
+  const oldW = canvas.width / dpr, oldH = canvas.height / dpr;
+  const zoom = view.fit ? view.s / view.fit : 1;
+  const center = (view.fit && oldW > 0 && oldH > 0) ? s2ll(oldW / 2, oldH / 2) : null;
+  fitView();
+  if (center && zoom > 1.001) {
+    view.s = view.fit * zoom;
+    view.ox = r.width / 2 - wx(center[1]) * view.s;
+    view.oy = r.height / 2 - wy(center[0]) * view.s;
+  }
+}
+
 function draw() {
+  syncCanvasSize();
+  const r = canvas.getBoundingClientRect(), W = r.width, H = r.height, dpr = window.devicePixelRatio || 1;
   const r = canvas.getBoundingClientRect(), W = r.width, H = r.height, dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0a1a2b'); g.addColorStop(1, '#06111d');
@@ -203,7 +222,7 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (mode) setMode(null); else if (selected) { selected = null; renderCtx(true); } }
   const sp = { '1': 1, '2': 2, '3': 4, '4': 8, '5': 16 }[e.key]; if (sp) { speed = sp; paused = false; updateSpeedBtns(); }
 });
-window.addEventListener('resize', () => { const f = view.s / (view.fit || 1); fitView(); view.s = view.fit * Math.max(1, f); });
+window.addEventListener('resize', syncCanvasSize);
 function setMode(m) {
   mode = m; wrap.classList.toggle('targeting', !!m);
   const h = $('#hint'); if (m) { h.textContent = m.text + '  (Esc: 취소)'; h.style.display = 'block'; } else h.style.display = 'none';
