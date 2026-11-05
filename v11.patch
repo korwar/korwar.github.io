@@ -1,0 +1,324 @@
+--- orig/src/core.js
++++ w/src/core.js
+@@ -726,13 +726,17 @@
+   const enemyAlive = S.units.some(u => u.alive && u.active && SIDE_OF[u.side] === 2);
+   if (n2 === 0 || (!enemyAlive && S.lastCaptured > 0.5)) {
+     if (n2) { for (let c = 0; c < NCELL; c++) if (S.land[c]) S.owner[c] = 1; S.terrVer++; }
+-    S.over = { result: 'win', title: '한반도 통일', msg: `개전 ${day}일 만에 전선이 압록강과 두만강에 도달했습니다.\n분단 이후 처음으로 한반도 전역이 하나의 정부 아래 놓였습니다.` };
++    S.over = { result: 'win', ending: !S.chinaIn ? 'win_clean' : 'win_china', title: '한반도 통일', msg: `개전 ${day}일 만에 전선이 압록강과 두만강에 도달했습니다.\n분단 이후 처음으로 한반도 전역이 하나의 정부 아래 놓였습니다.` };
+   } else if (S.will <= 0) {
+-    S.over = { result: 'lose', title: '전쟁 지속 불가', msg: '누적된 피해로 국민적 지지가 붕괴했습니다.\n정부는 휴전 협상을 결정했고, 합참의장은 직에서 물러났습니다.' };
++    S.over = { result: 'lose', ending: 'lose_will', title: '전쟁 지속 불가', msg: '누적된 피해로 국민적 지지가 붕괴했습니다.\n정부는 휴전 협상을 결정했습니다.' };
+   } else if (s1 / S.landCells < 0.25) {
+-    S.over = { result: 'lose', title: '전선 붕괴', msg: '국군의 방어선이 무너졌습니다.\n남은 전력으로는 더 이상 전쟁을 수행할 수 없습니다.' };
++    S.over = { result: 'lose', ending: 'lose_front', title: '전선 붕괴', msg: '국군의 방어선이 무너졌습니다.\n남은 전력으로는 더 이상 전쟁을 수행할 수 없습니다.' };
++  }
++  if (S.over) {
++    S.over.stats = { day, cas, cost: st.cost };
++    /* v1.1: 통일했으나 지지도가 낮거나 민간 피해가 막대하면 '상처뿐인 통일' 엔딩 */
++    if (S.over.result === 'win' && (S.will < 30 || st.civ > 200000)) S.over.ending = 'win_pyrrhic';
+   }
+-  if (S.over) S.over.stats = { day, cas, cost: st.cost };
+ }
+ const CMD = {
+   setBrigOrder(S, u, i, ord) { u.brigades[i].order = ord; if (ord === 'attack' && u.side === 'ROK') S.rokAttacked = true; },
+@@ -789,5 +793,5 @@
+     for (const u of S.units) if (u.alive && SIDE_OF[u.side] === 1) for (const b of u.brigades) if (b.guns || b.mlrs) { const add = b.initShells * 0.5; b.shells = Math.min(b.initShells * 1.5, b.shells + add); n += add; }
+     S.stats.cost += n * 0.000006 + 0.5; log(S, `탄약 긴급 추진 보급 — 약 ${Math.round(n).toLocaleString()}발 보급.`, 'good'); return null; },
+   toggleCB(S) { S.counterBattery = !S.counterBattery; log(S, S.counterBattery ? '대화력전 우선 지시 — 북한 장사정포 집중 타격.' : '대화력전 우선 지시 해제.', 'sys'); },
+-  surrender(S) { S.over = { result: 'lose', title: '항복', msg: '대한민국 정부는 합참의장의 건의에 따라 전쟁 중단을 선언했습니다.', stats: { day: dayOf(S), cas: Math.round(S.stats.rok.kia + S.stats.rok.wia + S.stats.rok.mia), cost: S.stats.cost } }; },
++  surrender(S) { S.over = { result: 'lose', ending: 'surrender', title: '항복', msg: '대한민국 정부는 전쟁 중단을 선언했습니다.', stats: { day: dayOf(S), cas: Math.round(S.stats.rok.kia + S.stats.rok.wia + S.stats.rok.mia), cost: S.stats.cost } }; },
+ };
+--- orig/src/menu.js
++++ w/src/menu.js
+@@ -1,6 +1,16 @@
+ /* =====================================================================
+  *  MENU : 메인 화면 · 명예의 전당 · 게임 안내 · 설정 · 프롤로그 · 종료 처리
+  * ===================================================================== */
++/* v1.1 : 스마트폰 접속 차단 — 태블릿·PC는 허용 */
++const IS_PHONE = (() => {
++  const ua = navigator.userAgent || '';
++  if (/iPhone|iPod|Windows Phone|BlackBerry|IEMobile|Opera Mini/i.test(ua)) return true;
++  if (/Android/i.test(ua) && /Mobile/i.test(ua)) return true;
++  if (navigator.userAgentData && navigator.userAgentData.mobile) return true;
++  const coarse = window.matchMedia && matchMedia('(pointer:coarse)').matches;
++  return coarse && Math.min(screen.width, screen.height) < 600;
++})();
++if (IS_PHONE) $('#mobileBlock').style.display = 'flex';
+ const screens = { menu: $('#menu'), app: $('#app') };
+ function show(name) { screens.menu.style.display = name === 'menu' ? 'flex' : 'none'; screens.app.style.display = name === 'app' ? 'flex' : 'none'; if (name === 'app') fitView(); }
+ (function menuArt() {
+@@ -39,7 +49,7 @@
+   renderRankTabs(); renderRankTable();
+ }
+ function openMenu() { clearGame(); show('menu'); loadRankings(); }
+-$('#mStart').onclick = () => { show('app'); clearGame(); if (SETTINGS.prologue === 'skip') showBriefing(); else runPrologue(showBriefing); };
++$('#mStart').onclick = () => { if (IS_PHONE) return; show('app'); clearGame(); if (SETTINGS.prologue === 'skip') showBriefing(); else runPrologue(showBriefing); };
+ $('#mGuide').onclick = () => openModal('guide');
+ $('#mSettings').onclick = () => { fillSettings(); openModal('settings'); };
+ $('#mCredits').onclick = () => openModal('credits');
+@@ -101,9 +111,88 @@
+ 
+ let endShown = false;
+ const rankFormHTML = $('#rankForm').innerHTML;
++/* v1.1 : 전쟁 종료 시나리오별 엔딩 (프롤로그와 같은 검은 화면 · 흰 글자 · 페이드 인/아웃) */
++function endingLines(S) {
++  const o = S.over, st = S.stats, d = o.stats.day, n = v => fmt(v);
++  const kia = n(st.rok.kia), civ = n(st.civ), cost = o.stats.cost.toFixed(1), y = new Date().getFullYear();
++  const E = {
++    win_clean: ['한반도 통일', [
++      `개전 ${d}일째.\n압록강 철교 위로 태극기가 올랐다.`,
++      '중국은 끝내 국경을 넘지 않았다.\n전쟁은 한반도 안에서 시작되어, 한반도 안에서 끝났다.',
++      `국군 전사자 ${kia}명.\n그 이름들은 용산의 전쟁기념관 벽에 새겨졌다.`,
++      '평양의 거리에는 처음으로 남쪽의 구호 트럭이 들어섰다.\n사람들은 경계하면서도, 빵을 받아 들었다.',
++      '휴전선 철책은 하나씩 걷혔고,\n이산가족의 이름이 매일 밤 뉴스에 호명되었다.',
++      '통일 정부의 첫 과제는 승리가 아니라\n70여 년의 간극을 메우는 일이었다.',
++      `${y}년.\n분단의 시대가 끝났다.`]],
++    win_china: ['압록강의 겨울', [
++      `개전 ${d}일째.\n마침내 전선이 압록강과 두만강에 닿았다.`,
++      S.chinaOut ? '국경을 넘었던 중국군은\n막대한 손실 끝에 강 건너로 물러났다.' : '국경을 넘어온 중국군과의 혈전 끝에\n한반도 전역이 확보되었다.',
++      '두 번째 한국전쟁은\n첫 번째 전쟁과 같은 강가에서 끝났다.',
++      `국군 전사자 ${kia}명.\n민간인 피해 ${civ}명.`,
++      '압록강 너머에는 여전히 대군이 머물렀다.\n통일 한국의 국경은 곧 가장 긴장된 국경이 되었다.',
++      '외교관들은 승전 기념식보다\n국경 협상 테이블에서 더 오랜 시간을 보냈다.',
++      '통일은 끝이 아니라,\n또 다른 시대의 시작이었다.']],
++    win_pyrrhic: ['상처뿐인 통일', [
++      `개전 ${d}일째.\n한반도 전역이 하나의 정부 아래 놓였다.`,
++      '그러나 거리에는 환호보다\n침묵이 더 많았다.',
++      `민간인 피해 ${civ}명.\n전쟁 직접비용 ${cost}조 원.`,
++      '폐허가 된 도시마다\n추모의 촛불이 꺼지지 않았다.',
++      `종전 시점의 국민 지지도 ${Math.max(0, S.will).toFixed(0)}.\n국민은 이 승리를 기뻐할 수 없었다.`,
++      '국회는 전쟁 지휘 전반에 대한\n국정조사를 의결했다.',
++      '사람들은 오래도록 물었다.\n이 통일의 값은 정당했는가.']],
++    lose_will: ['포성이 멎은 날', [
++      `개전 ${d}일째.\n광화문에는 전쟁 중단을 요구하는 촛불이 가득 찼다.`,
++      '누적된 희생 앞에서\n국민은 더 이상 이 전쟁을 지지하지 않았다.',
++      '정부는 중립국을 통해\n휴전 협상을 제안했다.',
++      `국군 전사자 ${kia}명.\n그들이 지켜 낸 땅 위로 다시 철책이 세워졌다.`,
++      '합동참모의장은 사의를 표명했다.\n전쟁 지휘에 대한 책임을 묻는 목소리가 이어졌다.',
++      '한반도는 또다시\n정전(停戰)의 시대로 돌아갔다.',
++      '두 번째 휴전.\n분단은 끝나지 않았다.']],
++    lose_front: ['붕괴', [
++      `개전 ${d}일째.\n국군의 마지막 방어선이 무너졌다.`,
++      '북쪽에서 내려온 전차의 굉음이\n남쪽의 도시들을 뒤덮었다.',
++      '정부는 남은 전력을 수습해\n최후의 거점으로 이동했다.',
++      '동맹국의 함정들이\n피란민을 싣고 바다를 건넜다.',
++      `국군 전사자 ${kia}명.\n민간인 피해 ${civ}명.`,
++      '통일을 위해 시작된 전쟁은\n대한민국의 존립을 묻는 전쟁이 되었다.',
++      '역사는 이 전쟁을\n가장 비싼 오판으로 기록했다.']],
++    surrender: ['항복', [
++      `개전 ${d}일째.\n대한민국 정부는 전쟁 중단을 선언했다.`,
++      '합동참모의장의 건의서는\n단 한 장이었다.',
++      '더 이상의 희생을 막는 것 외에\n남은 선택지는 없었다.',
++      `국군 전사자 ${kia}명.\n전쟁 직접비용 ${cost}조 원.`,
++      '협상장에서 대한민국은\n받아들이기 어려운 조건들에 서명했다.',
++      '그날 밤, 의장은 집무실의 불을 끄고\n오래도록 지도 앞에 서 있었다.',
++      '전쟁은 끝났다.\n그러나 아무것도 끝나지 않았다.']],
++  };
++  const key = E[o.ending] ? o.ending : (o.result === 'win' ? 'win_clean' : 'lose_will');
++  const [title, lines] = E[key];
++  return lines.concat([{ title }]);
++}
++let endingTimer = [];
++function runEnding(S) {
++  return new Promise(done => {
++    const P = $('#ending'), T = P.querySelector('.txt');
++    P.style.display = 'flex'; T.classList.remove('show', 'title'); T.textContent = '';
++    endingTimer.forEach(clearTimeout); endingTimer = [];
++    let t = 900;
++    endingLines(S).forEach(line => {
++      const isTitle = typeof line === 'object', txt = isTitle ? line.title : line;
++      endingTimer.push(setTimeout(() => { T.textContent = txt; T.classList.toggle('title', isTitle); T.classList.add('show'); }, t));
++      const hold = isTitle ? 3400 : 2600 + txt.length * 35;
++      endingTimer.push(setTimeout(() => T.classList.remove('show'), t + 1400 + hold));
++      t += 1400 + hold + 1500;
++    });
++    endingTimer.push(setTimeout(finish, t));
++    function finish() { endingTimer.forEach(clearTimeout); endingTimer = []; P.style.display = 'none'; T.classList.remove('show', 'title'); done(); }
++    $('#endSkipBtn').onclick = finish;
++  });
++}
+ async function showEnd() {
+-  if (!S || !S.over || endShown) return; endShown = true; paused = true; updateSpeedBtns();
++  if (!S || !S.over || endShown) return; endShown = true; paused = true; updateSpeedBtns(); clearDanger();
+   const o = S.over, e = $('#end'), st = S.stats;
++  const report = makeReport(S), serverP = Api.end(report);   // 엔딩 연출 중 기록 전송을 먼저 시작
++  await runEnding(S);
+   e.className = o.result; e.style.display = 'flex';
+   e.querySelector('h1').textContent = o.title;
+   e.querySelector('p').textContent = o.msg;
+@@ -114,10 +203,9 @@
+     <div>중국군 개입<b>${S.chinaIn ? (S.chinaOut ? '개입 후 철수' : '개입') : '없음'}</b></div><div>최종 국민 지지도<b>${Math.max(0, S.will).toFixed(0)}</b></div>`;
+   $('#learnBox').textContent = '전쟁 기록을 사령부로 전송하는 중…';
+   $('#rankForm').style.display = 'none';
+-  const report = makeReport(S);
+   const sr = sanitizeReport(JSON.parse(JSON.stringify(report)));
+   $('#endScore').textContent = o.result === 'win' && sr ? `종합 전공 점수 ${makeEntry(sr).score.toLocaleString('ko-KR')}점` : '';
+-  const r = await Api.end(report), L = r.learn;
++  const r = await serverP, L = r.learn;
+   $('#learnBox').innerHTML = L ? `북한군이 이번 전쟁을 분석해 <b>${r.offline ? '이 브라우저의' : '전체'} 북한군 교리</b>에 반영했습니다.<br>
+     ${L.topSector ? `이번 전쟁의 국군 주공 축선: ${L.topSector}` : '국군 주공 축선 정보 부족'} · 상륙 ${L.landings}회 · 공중작전 ${L.airOps}회 기록`
+     : r.error ? `기록 전송 실패: ${esc(r.error)}` : r.rejected ? '비정상적인 기록으로 판단되어 교리·랭킹에 반영되지 않았습니다.' : '작전 기간이 3일 미만이라 북한군 교리에 반영되지 않았습니다.';
+--- orig/src/style.css
++++ w/src/style.css
+@@ -95,8 +95,8 @@
+ #logBox{position:absolute;left:10px;bottom:10px;width:min(560px,60%);max-height:170px;overflow:auto;background:#0b141dd0;border:1px solid #22313f;border-radius:6px;padding:6px 9px;font-size:11.5px;line-height:1.55}
+ #logBox .t{color:#7d93a8;font-family:Consolas,monospace;margin-right:6px}
+ #logBox .good{color:#8fe3a1}#logBox .bad{color:#ff8a80}#logBox .warn{color:#ffd166}#logBox .sys{color:#9ecbff}
+-#hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#2f7ad0ee;padding:6px 14px;border-radius:5px;font-size:12.5px;display:none;pointer-events:none}
+-#toast{position:absolute;top:52px;left:50%;transform:translateX(-50%);background:#3a0d0df0;border:1px solid #a33;padding:9px 18px;border-radius:6px;font-size:14px;display:none;max-width:80%;text-align:center;pointer-events:none}
++#hint{position:absolute;top:46px;left:50%;transform:translateX(-50%);background:#2f7ad0ee;padding:6px 14px;border-radius:5px;font-size:12.5px;display:none;pointer-events:none}
++#toast{position:absolute;top:86px;left:50%;transform:translateX(-50%);background:#3a0d0df0;border:1px solid #a33;padding:9px 18px;border-radius:6px;font-size:14px;display:none;max-width:80%;text-align:center;pointer-events:none}
+ #toast.good{background:#0d3a1cf0;border-color:#3a9}
+ #zoomBtns{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:4px}
+ #zoomBtns .btn{width:32px;height:30px;padding:0;font-size:16px}
+@@ -158,3 +158,27 @@
+ #nickPreview{color:#8fe3a1;font-size:12px}
+ #rankForm .priv{font-size:11px;color:#8a8f7a;margin-top:6px}
+ #rankForm .ok{color:#8fe3a1;font-size:14px;text-align:center}
++
++/* ---------- v1.1 : 위험 경보 ---------- */
++.menuFoot .ver{color:#8aa0b5;font-family:Consolas,monospace}
++#dangerFx{position:absolute;inset:0;pointer-events:none;display:none;background:radial-gradient(ellipse at center,#ff000000 35%,#c0000088 100%),#b0000033;mix-blend-mode:screen}
++#mapWrap.danger #dangerFx{display:block;animation:dangerBlink 2.8s ease-in-out infinite}
++@keyframes dangerBlink{0%,100%{opacity:.08}50%{opacity:1}}
++#dangerBar{position:absolute;top:8px;left:50%;transform:translateX(-50%);display:none;pointer-events:none;max-width:72%;text-align:center;
++  color:#ffd800;font-weight:800;font-size:14.5px;letter-spacing:.5px;background:#1a0000d9;border:1px solid #ffd80080;border-radius:5px;padding:6px 16px;
++  text-shadow:0 0 6px #000,0 0 2px #000;box-shadow:0 0 18px #ff000055;white-space:pre-line;line-height:1.5}
++#mapWrap.danger #dangerBar{display:block}
++@media (prefers-reduced-motion:reduce){#mapWrap.danger #dangerFx{animation:none;opacity:.6}}
++/* ---------- v1.1 : 엔딩 ---------- */
++#ending{position:fixed;inset:0;background:#000;z-index:97;display:none;align-items:center;justify-content:center}
++#ending .txt{max-width:900px;padding:0 40px;text-align:center;font-size:26px;line-height:1.7;color:#fff;opacity:0;transition:opacity 1.4s ease;white-space:pre-line;letter-spacing:.5px}
++#ending .txt.show{opacity:1}
++#ending .txt.title{font-size:40px;font-weight:800;letter-spacing:8px}
++#endSkipBtn{position:absolute;top:16px;right:18px;background:transparent;border:1px solid #555;color:#aaa;padding:4px 12px;border-radius:3px;font-size:12px}
++#endSkipBtn:hover{color:#fff;border-color:#aaa}
++/* ---------- v1.1 : 스마트폰 차단 ---------- */
++#mobileBlock{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,#13263a 0%,#05090e 75%);padding:24px;user-select:text}
++#mobileBlock .mbox{max-width:420px;text-align:center;border:1px solid #2c4258;border-top:4px solid #f2c94c;background:#0b141de6;border-radius:8px;padding:26px 22px}
++#mobileBlock .mt{font-size:28px;font-weight:900;color:#f2c94c;letter-spacing:4px;margin-bottom:14px}
++#mobileBlock p{font-size:15px;line-height:1.75;color:#dfe7ef;margin-top:8px}
++#mobileBlock p.sm{font-size:12.5px;color:#8aa0b5;margin-top:14px}
+--- orig/src/template.html
++++ w/src/template.html
+@@ -4,7 +4,7 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <link rel="icon" href="data:,">
+-<title>합참의장 — 한반도 통일 작전</title>
++<title>제2차 한국전쟁</title>
+ <style>/*CSS*/</style>
+ <script>window.JCS_API_BASE = "/*API_BASE*/";</script>
+ </head>
+@@ -19,8 +19,8 @@
+ <div id="menu">
+   <div id="menuArt"></div>
+   <div id="menuLeft">
+-    <div class="emblem">JOINT CHIEFS OF STAFF · 합동참모본부</div>
+-    <h1>합참의장</h1>
++    <div class="emblem">THE SECOND KOREAN WAR · 전략 시뮬레이션</div>
++    <h1>제2차 한국전쟁</h1>
+     <h2>한반도 통일 작전</h2>
+     <div class="tagline">전투는 부대가 합니다. 당신은 지시합니다.<br>60만 북한군, 끝없는 침투, 그리고 압록강 너머의 그림자 — 통일의 길을 지휘하십시오.</div>
+     <div id="menuBtns">
+@@ -29,7 +29,7 @@
+       <button class="mbtn" id="mSettings">설정<small>프롤로그 · 기본 배속 · 표시 옵션</small></button>
+       <button class="mbtn" id="mCredits">제작 정보<small>데이터 출처 · 개인정보 안내</small></button>
+     </div>
+-    <div class="menuFoot">본 게임은 가상의 시나리오이며, 부대 정보는 공개 자료를 바탕으로 한 추정치입니다.</div>
++    <div class="menuFoot"><span class="ver">v1.1.0</span> · 본 게임은 가상의 시나리오이며, 부대 정보는 공개 자료를 바탕으로 한 추정치입니다.</div>
+   </div>
+   <div id="rankPanel">
+     <h3>명예의 전당 <span id="rankMode"></span></h3>
+@@ -42,7 +42,7 @@
+ 
+ <div id="app">
+   <div id="topbar">
+-    <div class="title">합동참모본부 전쟁지휘체계<small>한반도 통일 작전</small></div>
++    <div class="title">제2차 한국전쟁<small>전쟁 지휘 체계</small></div>
+     <div id="clock">D+0  00:00</div>
+     <div id="speed">
+       <button class="btn" data-sp="pause" id="pauseBtn" title="일시정지 (Space)">❚❚</button>
+@@ -62,6 +62,8 @@
+       <div id="unitLayer"></div>
+       <div id="hint"></div>
+       <div id="toast"></div>
++      <div id="dangerFx"></div>
++      <div id="dangerBar" role="alert" aria-live="assertive"></div>
+       <div id="zoomBtns"><button class="btn" id="zin">+</button><button class="btn" id="zout">−</button><button class="btn" id="zfit" title="전체 보기">⤢</button></div>
+       <div id="logBox"></div>
+       <div id="legend">
+@@ -76,6 +78,13 @@
+ </div>
+ 
+ <div id="prologue"><div class="txt"></div><button id="skipBtn">건너뛰기 ▶</button></div>
++<div id="ending"><div class="txt"></div><button id="endSkipBtn">건너뛰기 ▶</button></div>
++<div id="mobileBlock"><div class="mbox">
++  <div class="mt">제2차 한국전쟁</div>
++  <p>이 게임은 <b>스마트폰에서 플레이할 수 없습니다.</b></p>
++  <p>넓은 전장 지도와 다수의 부대 지휘 패널을 사용하므로<br>PC(데스크톱·노트북)의 웹 브라우저로 접속해 주십시오.</p>
++  <p class="sm">권장 환경: 가로 1280px 이상 화면 · 마우스</p>
++</div></div>
+ <div id="loading">사령부와 교신 중…</div>
+ 
+ <div class="modal" id="brief"><div class="box">
+--- orig/src/ui.js
++++ w/src/ui.js
+@@ -43,6 +43,7 @@
+ function clearGame() {
+   unitEls.forEach(el => el.remove()); unitEls.clear(); S = null; selected = null; mode = null;
+   $('#status').innerHTML = ''; $('#ctx').innerHTML = ''; $('#logBox').innerHTML = ''; $('#clock').textContent = 'D+0  00:00';
++  statusCache = { v: -1 }; clearDanger();
+ }
+ async function startNew(diff) {
+   $('#loading').style.display = 'flex';
+@@ -196,7 +197,7 @@
+   const r = canvas.getBoundingClientRect(); const [lat, lon] = s2ll(e.clientX - r.left, e.clientY - r.top); issueTarget(lat, lon);
+ });
+ window.addEventListener('keydown', e => {
+-  if (!S || $('#app').style.display === 'none' || $('#prologue').style.display === 'flex') return;
++  if (!S || $('#app').style.display === 'none' || $('#prologue').style.display === 'flex' || $('#ending').style.display === 'flex') return;
+   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+   if (e.key === 'Escape') { if (mode) setMode(null); else if (selected) { selected = null; renderCtx(true); } }
+@@ -246,9 +247,10 @@
+   const d = Math.floor(S.hour / 24), h = S.hour % 24;
+   $('#clock').textContent = `D+${d}  ${String(h).padStart(2, '0')}:00`;
+   if (statusCache.v !== S.terrVer) {
+-    let cap = 0, lost = 0; for (let c = 0; c < NCELL; c++) { if (S.origOwner[c] === 2 && S.owner[c] === 1) cap++; if (S.origOwner[c] === 1 && S.owner[c] === 2) lost++; }
+-    statusCache = { v: S.terrVer, cap: cap / S.northCells0, lost: lost / S.southCells0 };
++    let cap = 0, lost = 0, own = 0; for (let c = 0; c < NCELL; c++) { if (!S.land[c]) continue; if (S.owner[c] === 1) own++; if (S.origOwner[c] === 2 && S.owner[c] === 1) cap++; if (S.origOwner[c] === 1 && S.owner[c] === 2) lost++; }
++    statusCache = { v: S.terrVer, cap: cap / S.northCells0, lost: lost / S.southCells0, own: own / S.landCells };
+   }
++  updateDanger();
+   const st = S.stats, rk = st.rok, us = st.us;
+   const bar = (v, c, mark) => `<div class="bar">${mark != null ? `<i style="left:${Math.max(0, Math.min(100, mark))}%"></i>` : ''}<div style="width:${Math.max(0, Math.min(100, v))}%;background:${c}"></div></div>`;
+   const willC = S.will > 50 ? '#46a05b' : S.will > 25 ? '#e0a92e' : '#d9534f', chC = S.chinaRisk < 40 ? '#46a05b' : S.chinaRisk < 70 ? '#e0a92e' : '#d9534f';
+@@ -270,6 +272,27 @@
+     <div class="s"><div class="k">북한 WMD 위협도</div><div class="v">${S.wmd.toFixed(0)}</div>${bar(S.wmd, S.wmd > 70 ? '#d9534f' : '#e0a92e')}</div>
+     <div class="s w"><div class="k">북한군 태세 · 교도대 · 미군 증원 · 난이도</div><div class="v" style="font-size:12px">${S.stance === 'offensive' ? '<span style="color:#ff8a80">공세</span>' : '방어'} · 교도대 잔여 ${S.kresLeft} · 미 증원 ${US_REINF.filter(r => S.flags['us_' + r.id]).length}/${US_REINF.length}${nextUS} · ${DIFF_NAME[S.difficulty]}</div></div>`;
+ }
++/* v1.1 : 전쟁 실패 위험 경보 — 지도 적색 점멸 + 상단 중앙 황색 메시지 */
++const DANGER = {
++  will: 5,         // 국민 지지도 5 미만 (0이 되면 '전쟁 지속 불가')
++  ownLand: 0.30,   // 한반도 전체 중 아군 통제 비율 30% 미만 (25% 미만이 되면 '전선 붕괴')
++};
++let dangerSig = '';
++function dangerList() {
++  if (!S || S.over) return [];
++  const out = [], T = S.willP ? S.willP.T : S.will;
++  if (S.will < DANGER.will) out.push(`⚠ 국민 지지도 붕괴 직전 (${Math.max(0, S.will).toFixed(1)}${T < S.will ? ' · 계속 하락 중' : ''}) — 0이 되면 전쟁 지속 불가`);
++  if (statusCache.own != null && statusCache.own < DANGER.ownLand) out.push(`⚠ 한반도 통제 지역 ${pct(statusCache.own)} — 25% 미만 시 전선 붕괴`);
++  if (S.flags.seoulLost) out.push('⚠ 수도 서울 함락 — 국민 지지도 지속 하락');
++  return out;
++}
++function updateDanger() {
++  const list = dangerList(), sig = list.join('\n');
++  if (sig === dangerSig) return; dangerSig = sig;
++  $('#mapWrap').classList.toggle('danger', list.length > 0);
++  $('#dangerBar').textContent = sig;
++}
++function clearDanger() { dangerSig = ''; $('#mapWrap').classList.remove('danger'); $('#dangerBar').textContent = ''; }
+ function pollLog() {
+   const box = $('#logBox'); let added = false;
